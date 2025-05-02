@@ -20,14 +20,19 @@ class NeuralNetwork:
 
     def relu(self, x):
         return np.maximum(0, x)
+    
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
 
     def predict(self, x):
-        h1 = self.relu(np.dot(x, self.weights1) + self.bias1 )
-        h2 = self.relu(np.dot(h1, self.weights2) + self.bias2)
+        h1 = self.sigmoid(np.dot(x, self.weights1) + self.bias1 )
+        h2 = self.sigmoid(np.dot(h1, self.weights2) + self.bias2)
         output = np.dot(h2, self.weights3) + self.bias3
         return output
 
+
+    
     def copy_from(self, other):
         self.weights1 = other.weights1.copy()
         self.bias1 = other.bias1.copy()
@@ -56,16 +61,23 @@ class ReplayBuffer:
 
 #%% Ağırlık güncelleme fonksiyonu
 def update_weights(state ,action, reward, next_state , done,
-                   network,  target_network, lr=0.0001 ,gamma=0.99):
+                   network,  target_network, lr=0.005 ,gamma=0.99):
 
+    def sigmoid(x):
+        return 1 / (1 + np.exp(-x))
+
+    def sigmoid_derivative(x):
+        s = sigmoid(x)
+        return s * (1 - s)
+    
     # Forward main
-    z1 = np.dot(state, network.weights1)  + network.bias1
-    a1 = np.maximum(0 , z1)
-
+    z1 = np.dot(state, network.weights1) + network.bias1
+    a1 = sigmoid(z1)
+    
     z2 = np.dot(a1, network.weights2) + network.bias2
-    a2 = np.maximum(0 , z2)
-
-    z3 = np.dot(a2 , network.weights3) + network.bias3
+    a2 = sigmoid(z2)
+    
+    z3 = np.dot(a2, network.weights3) + network.bias3
     q_values = z3
 
     # Calculate targer q value
@@ -83,14 +95,16 @@ def update_weights(state ,action, reward, next_state , done,
     db3 = dL_dz3
 
     da2 = np.dot(dL_dz3, network.weights3.T)
-    dz2 = da2 * (z2 > 0)
-    dW2 = np.outer(a1 , dz2)
+    dz2 = da2 * sigmoid_derivative(z2)
+    dW2 = np.outer(a1, dz2)
     db2 = dz2
-
+    
     da1 = np.dot(dz2, network.weights2.T)
-    dz1 = da1 * (z1 > 0)
-    dW1 = np.outer(state , dz1)
+    dz1 = da1 * sigmoid_derivative(z1)
+    dW1 = np.outer(state, dz1)
     db1 = dz1
+        
+    
 
     # update  main
     network.weights3 -= lr * dW3
@@ -115,6 +129,8 @@ def take_action_wout_epsilon(observation, network):
 
     q_values = network.predict(observation)  
     return np.argmax(q_values) 
+
+
 
 #%% ön degişkenler
 epsilon = 0.1
@@ -190,4 +206,8 @@ while True:
     
     
 env.close()
+
+
+
+
 
