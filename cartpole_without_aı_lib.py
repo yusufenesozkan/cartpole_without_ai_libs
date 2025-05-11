@@ -70,6 +70,7 @@ def update_weights(state ,action, reward, next_state , done,
         s = sigmoid(x)
         return s * (1 - s)
     
+    breakpoint()
     # Forward main
     z1 = np.dot(state, network.weights1) + network.bias1
     a1 = sigmoid(z1)
@@ -78,7 +79,24 @@ def update_weights(state ,action, reward, next_state , done,
     a2 = sigmoid(z2)
     
     z3 = np.dot(a2, network.weights3) + network.bias3
-    q_values = z3
+    #############################################################3
+    tz3 = z3 #taken action
+    ta2 = np.dot(tz3 - network.bias3, np.linalg.inv(network.weights3))#2. katmanın çıktısı
+    
+    np.shape(network.weights3)
+
+    tz2 = np.log(ta2 / (1 - ta2))#sigmoidden önce 2. çıktısı
+    
+    ta1 = np.dot(tz2 - network.bias2, np.linalg.inv(network.weights2))
+
+    tz1 = np.log(ta1 / (1 - ta1))
+    
+    #t_state = np.dot(tz1 - network.bias1, np.linalg.inv(network.weights1))
+    t_state = np.dot(tz1 - network.bias1, np.linalg.pinv(network.weights1))# kare olmayan
+
+
+
+
 
     # Calculate targer q value
     next_q_values = target_network.predict(next_state) 
@@ -86,8 +104,8 @@ def update_weights(state ,action, reward, next_state , done,
     target_q = reward if done else reward + gamma * max_next_q
 
     # error
-    error = np.zeros_like(q_values)
-    error[action] = (q_values[action] - target_q)
+    error = np.zeros_like(z3)
+    error[action] = (z3[action] - target_q)
 
     # Backward 
     dL_dz3 = 2 * error  
@@ -103,7 +121,6 @@ def update_weights(state ,action, reward, next_state , done,
     dz1 = da1 * sigmoid_derivative(z1)
     dW1 = np.outer(state, dz1)
     db1 = dz1
-        
     
 
     # update  main
@@ -134,9 +151,9 @@ def take_action_wout_epsilon(observation, network):
 
 #%% ön degişkenler
 epsilon = 0.1
-input_size = 4
-layer1 = 256
-layer2 = 256
+input_size = 2
+layer1 = 2
+layer2 = 2
 output_size = 2
 
 #main and q networks 
@@ -154,6 +171,7 @@ step_count = 0
 #%% Main loop
 while True:
     state, _ = env.reset()
+    state = state[:2]
     total_reward = 0
     done = False
 
@@ -161,11 +179,12 @@ while True:
         action = take_action_w_epsilon(state, main_network)
         main_network.predict(state)
         next_state, reward, terminated, truncated, _ = env.step(action)
+        next_state = next_state[:2]#state 2 olsun
         """if next_state[2] < 0.79 and  next_state[2] > -0.79:
             terminated = False"""
             
         done = terminated or truncated
-        pole_angle = state[2]
+        """pole_angle = state[2]
         cart_position = state[0]
         # Odul hesaplamasını gelecekteki yenilikler icin farklı kullanmayı tercih ettim
         # Çubuğun dikliğine göre ödül
@@ -177,7 +196,7 @@ while True:
         position_reward = position_reward ** 2
         
         # İkisini birleştir
-        reward = (angle_reward + position_reward)/2
+        reward = (angle_reward + position_reward)/2"""
         buffer.add(state, action, reward, next_state, done)
         buffer.buffer[0]
 
@@ -206,8 +225,3 @@ while True:
     
     
 env.close()
-
-
-
-
-
